@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rapi — Keuangan Pribadi</title>
+<style>
+  :root{--bg:#f7f8f6;--paper:#fff;--ink:#20251f;--muted:#858b83;--line:#eceeea;--green:#286b4c;--mint:#e8f2ec;--red:#c76658}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,sans-serif}
+  button,input,select{font:inherit}button{cursor:pointer}.app{max-width:1120px;margin:auto;padding:26px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+  .brand{font-size:20px;font-weight:750}.mark{display:inline-grid;place-items:center;background:var(--green);color:white;border-radius:11px;width:34px;height:34px;margin-right:8px}
+  .layout{display:grid;grid-template-columns:1fr 300px;gap:20px}h1{font-size:26px;margin:0 0 18px;letter-spacing:-.7px}
+  .muted{color:var(--muted);font-size:12px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+  .card,.panel,.ai{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:18px}
+  .label{color:var(--muted);font-size:12px}.amount{font-weight:700;font-size:22px;margin:8px 0 2px}
+  .panel{margin-bottom:16px}.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  h2{font-size:15px;margin:0}.btn{border:0;background:var(--green);color:white;padding:9px 12px;border-radius:9px;font-weight:600}
+  .outline{background:white;color:var(--green);border:1px solid var(--line);padding:7px 10px;border-radius:8px}
+  .chart{height:145px;display:flex;align-items:end;gap:8px}.monthbar{height:100%;flex:1;display:flex;align-items:end;justify-content:center;gap:4px;position:relative;padding-bottom:22px}
+  .bar{width:13px;max-width:42%;background:#dfe9e1;border-radius:5px 5px 0 0}.bar.out{background:#93b79f}
+  .monthbar small{position:absolute;bottom:0;color:var(--muted)}
+  .tx{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid #f1f2ef}
+  .icon{width:36px;height:36px;border-radius:11px;background:#f3f5f1;display:grid;place-items:center}
+  .tx-name{font-weight:600}.tx-meta{font-size:11px;color:var(--muted)}.value{font-weight:600}.income{color:var(--green)}
+  .empty{text-align:center;color:var(--muted);padding:22px}
+  aside{display:flex;flex-direction:column;gap:15px}.ai{background:#f0f5f0;border-color:#e5ede5}
+  .ai p{font-size:12px;color:#4d584f}.tip{background:white;border-radius:10px;padding:11px;font-size:12px}
+  .tip b{display:block;color:var(--green)}.ask{display:flex;gap:6px;margin-top:12px}
+  .ask input{min-width:0;flex:1;border:1px solid #dce5dc;border-radius:8px;padding:9px}
+  .budget-row{margin:15px 0}.budget-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+  .track{height:7px;background:#f0f1ed;border-radius:8px;overflow:hidden}.fill{height:100%;background:#75a486}
+  .privacy{text-align:center;color:#969c94;font-size:10px}
+  .backdrop{display:none;position:fixed;inset:0;background:#14191466;place-items:center;padding:16px}
+  .backdrop.show{display:grid}.modal{background:white;border-radius:16px;padding:22px;width:min(410px,100%)}
+  .modal h2{font-size:18px;margin-bottom:14px}.field{margin:12px 0}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}
+  .field input,.field select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px}
+  .actions{display:flex;justify-content:end;gap:8px;margin-top:16px}.cancel{background:white;border:1px solid var(--line);padding:9px 12px;border-radius:8px}
+  @media(max-width:780px){.layout{grid-template-columns:1fr}aside{display:grid;grid-template-columns:1fr 1fr}.privacy{grid-column:span 2}}
+  @media(max-width:520px){.app{padding:16px}.cards{gap:7px}.card{padding:12px 9px}.amount{font-size:16px}.layout{gap:12px}aside{display:flex}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header><div class="brand"><span class="mark">↗</span>rapi.</div><span class="muted" id="today"></span></header>
+  <main class="layout">
+    <section>
+      <p class="muted">Gambaran keuanganmu</p><h1>Ringkasan</h1><p class="muted" id="syncStatus">Menghubungkan ke penyimpanan bersama…</p>
+      <div class="cards">
+        <div class="card"><div class="label">Total saldo</div><div class="amount" id="balance">Rp0</div><div class="muted">Semua transaksi</div></div>
+        <div class="card"><div class="label">Pemasukan</div><div class="amount" id="income">Rp0</div><div class="muted">Bulan ini</div></div>
+        <div class="card"><div class="label">Pengeluaran</div><div class="amount" id="expense">Rp0</div><div class="muted">Bulan ini</div></div>
+      </div>
+      <section class="panel"><div class="panel-head"><h2>Arus kas · 6 bulan</h2><span class="muted">Masuk / keluar</span></div><div class="chart" id="chart"></div></section>
+      <section class="panel">
+        <div class="panel-head"><h2>Transaksi terbaru</h2><button class="outline" id="add">＋ Tambah</button></div>
+        <div id="transactions"></div>
+      </section>
+    </section>
+    <aside>
+      <section class="ai">
+        <h2>✳ Teman Rapi</h2><p id="summary">Catat transaksi pertamamu untuk mendapat gambaran keuangan.</p>
+        <div class="tip"><b>Tips sederhana</b>Catat transaksi sekecil apa pun agar anggaranmu makin akurat.</div>
+        <div class="ask"><input id="question" placeholder="Tanya soal keuanganmu"><button class="btn" id="ask">Tanya</button></div>
+        <p id="answer"></p>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Anggaran bulanan</h2><button class="outline" id="setBudget">＋ Atur</button></div>
+        <div id="budgets"></div>
+      </section>
+      <div class="privacy">Data tersimpan di browser ini saja.</div>
+    </aside>
+  </main>
+</div>
+
+<div class="backdrop" id="txBackdrop"><form class="modal" id="txForm">
+  <h2>Tambah transaksi</h2>
+  <div class="field"><label>Nama</label><input id="name" required placeholder="Contoh: makan siang"></div>
+  <div class="field"><label>Jumlah rupiah</label><input id="amount" type="number" min="1" required></div>
+  <div class="field"><label>Jenis</label><select id="type"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></div>
+  <div class="field"><label>Kategori</label><select id="category"><option>Makanan</option><option>Transportasi</option><option>Belanja</option><option>Tagihan</option><option>Hiburan</option><option>Uang saku</option><option>Lainnya</option></select></div>
+  <div class="field"><label>Tanggal</label><input id="date" type="date" required></div>
+  <div class="actions"><button type="button" class="cancel" id="close">Batal</button><button class="btn">Simpan</button></div>
+</form></div>
+
+<div class="backdrop" id="budgetBackdrop"><form class="modal" id="budgetForm">
+  <h2>Atur anggaran bulanan</h2><div id="budgetFields"></div>
+  <div class="actions"><button type="button" class="cancel" id="closeBudget">Batal</button><button class="btn">Simpan</button></div>
+</form></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const money=n=>'Rp'+Math.round(n||0).toLocaleString('id-ID');
+const now=new Date(), todayISO=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+let data=JSON.parse(localStorage.getItem('rapi-data')||'null')||{
+  transactions:[],budgets:{Makanan:800000,Transportasi:400000,Belanja:500000,Tagihan:600000,Hiburan:250000}
+};
+const save=()=>localStorage.setItem('rapi-data',JSON.stringify(data));
+async function loadSharedData(){
+  try{
+    let response=await fetch('/api/data');
+    if(!response.ok)throw new Error('Server tidak dapat membaca data.');
+    let shared=await response.json();
+    if(!shared.initialized){
+      response=await fetch('/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      if(!response.ok)throw new Error('Data lama tidak dapat dipindahkan.');
+      shared=await response.json();
+    }
+    data={transactions:shared.transactions||[],budgets:shared.budgets||data.budgets};
+    save();render();$('#syncStatus').textContent='Data tersimpan bersama di komputer utama';
+  }catch(error){$('#syncStatus').textContent='Server belum tersambung — perubahan tidak akan tersinkron';}
+}
+async function refreshSharedData(){
+  if($('#txBackdrop').classList.contains('show')||$('#budgetBackdrop').classList.contains('show'))return;
+  try{
+    const response=await fetch('/api/data');if(!response.ok)return;
+    const shared=await response.json();if(!shared.initialized)return;
+    const next={transactions:shared.transactions||[],budgets:shared.budgets||data.budgets};
+    if(JSON.stringify(next)!==JSON.stringify(data)){data=next;save();render();}
+    $('#syncStatus').textContent='Data tersimpan bersama di komputer utama';
+  }catch{}
+}
+const currentMonth=()=>now.toISOString().slice(0,7);
+const monthTx=()=>data.transactions.filter(t=>t.date.slice(0,7)===currentMonth());
+
+function render(){
+  const tx=monthTx(), income=tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense=tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const balance=data.transactions.reduce((s,t)=>s+(t.type==='income'?t.amount:-t.amount),0);
+  $('#balance').textContent=money(balance);$('#income').textContent=money(income);$('#expense').textContent=money(expense);
+  const recent=[...tx].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6), list=$('#transactions');
+  list.innerHTML=recent.length?'':'<div class="empty">Belum ada transaksi bulan ini.</div>';
+  recent.forEach(t=>{
+    const row=document.createElement('div');row.className='tx';
+    row.innerHTML=`<div class="icon">${t.type==='income'?'↙':'•'}</div><div><div class="tx-name"></div><div class="tx-meta"></div></div><div class="value ${t.type==='income'?'income':''}"></div>`;
+    row.querySelector('.tx-name').textContent=t.name;
+    row.querySelector('.tx-meta').textContent=`${t.category} · ${new Date(t.date+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'})}`;
+    row.querySelector('.value').textContent=(t.type==='income'?'+':'−')+money(t.amount);list.append(row);
+  });
+  drawChart();drawBudgets(tx);
+  $('#summary').textContent=tx.length
+    ?`Bulan ini pemasukanmu ${money(income)} dan pengeluaranmu ${money(expense)}.`
+    :'Catat transaksi pertamamu untuk mendapat gambaran keuangan.';
+}
+function drawChart(){
+  const chart=$('#chart');chart.innerHTML='';
+  const months=[];
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({key:d.toISOString().slice(0,7),label:d.toLocaleDateString('id-ID',{month:'short'})})}
+  const sums=months.map(m=>data.transactions.filter(t=>t.date.startsWith(m.key)).reduce((s,t)=>{s[t.type]+=t.amount;return s},{income:0,expense:0}));
+  const max=Math.max(1,...sums.flatMap(x=>[x.income,x.expense]));
+  months.forEach((m,i)=>{const group=document.createElement('div');group.className='monthbar';
+    group.innerHTML=`<div class="bar" style="height:${Math.max(3,sums[i].income/max*100)}%" title="Masuk ${money(sums[i].income)}"></div><div class="bar out" style="height:${Math.max(3,sums[i].expense/max*100)}%" title="Keluar ${money(sums[i].expense)}"></div><small>${m.label}</small>`;chart.append(group)});
+}
+function drawBudgets(tx){
+  const el=$('#budgets');el.innerHTML='';
+  Object.entries(data.budgets).forEach(([cat,limit])=>{
+    const used=tx.filter(t=>t.type==='expense'&&t.category===cat).reduce((s,t)=>s+t.amount,0);
+    const row=document.createElement('div');row.className='budget-row';
+    row.innerHTML=`<div class="budget-label"><b></b><span></span></div><div class="track"><div class="fill"></div></div>`;
+    row.querySelector('b').textContent=cat;row.querySelector('.budget-label span').textContent=`${money(used)} / ${money(limit)}`;
+    row.querySelector('.fill').style.width=Math.min(100,limit?used/limit*100:0)+'%';el.append(row);
+  });
+}
+$('#today').textContent=now.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
+$('#add').onclick=()=>{$('#date').value=todayISO();$('#txBackdrop').classList.add('show')};
+$('#close').onclick=()=>$('#txBackdrop').classList.remove('show');
+$('#txForm').onsubmit=async e=>{
+  e.preventDefault();
+  const button=e.target.querySelector('button[type="submit"],button:not([type])');button.disabled=true;
+  try{
+    const response=await fetch('/api/transactions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#name').value.trim(),amount:Number($('#amount').value),type:$('#type').value,category:$('#category').value,date:$('#date').value})});
+    const result=await response.json();if(!response.ok)throw new Error(result.error||'Transaksi gagal disimpan.');
+    data={transactions:result.transactions,budgets:result.budgets};save();render();e.target.reset();$('#txBackdrop').classList.remove('show');$('#syncStatus').textContent='Transaksi tersimpan untuk semua perangkat';
+  }catch(error){$('#syncStatus').textContent=error.message||'Gagal menyimpan ke komputer utama.';}
+  finally{button.disabled=false;}
+};
+$('#setBudget').onclick=()=>{
+  const fields=$('#budgetFields');fields.innerHTML='';
+  Object.entries(data.budgets).forEach(([cat,val])=>{
+    const f=document.createElement('div');f.className='field';f.innerHTML='<label></label><input type="number" min="0">';
+    f.querySelector('label').textContent=cat;f.querySelector('input').value=val;f.querySelector('input').dataset.cat=cat;fields.append(f);
+  });$('#budgetBackdrop').classList.add('show');
+};
+$('#closeBudget').onclick=()=>$('#budgetBackdrop').classList.remove('show');
+$('#budgetForm').onsubmit=async e=>{
+  e.preventDefault();const budgets={...data.budgets};document.querySelectorAll('#budgetFields input').forEach(i=>budgets[i.dataset.cat]=Number(i.value)||0);
+  const button=e.target.querySelector('button[type="submit"],button:not([type])');button.disabled=true;
+  try{
+    const response=await fetch('/api/budgets',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({budgets})});
+    const result=await response.json();if(!response.ok)throw new Error(result.error||'Anggaran gagal disimpan.');
+    data={transactions:result.transactions,budgets:result.budgets};save();render();$('#budgetBackdrop').classList.remove('show');$('#syncStatus').textContent='Anggaran tersimpan untuk semua perangkat';
+  }catch(error){$('#syncStatus').textContent=error.message||'Gagal menyimpan ke komputer utama.';}
+  finally{button.disabled=false;}
+};
+$('#ask').onclick = async () => {
+  const question = $('#question').value.trim();
+  if (!question) return;
+
+  const button = $('#ask');
+  button.disabled = true;
+  button.textContent = '…';
+  $('#answer').textContent = 'Sedang menyiapkan jawaban…';
+
+  try {
+    const response = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        transactions: monthTx().map(({ amount, type, category }) => ({
+          amount, type, category
+        }))
+      })
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Permintaan gagal.');
+
+    $('#answer').textContent = result.answer;
+    $('#question').value = '';
+  } catch (error) {
+    $('#answer').textContent = error.message || 'Tidak dapat terhubung ke backend.';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Tanya';
+  }
+};
+
+render();loadSharedData();setInterval(refreshSharedData,5000);window.addEventListener('focus',refreshSharedData);
+</script>
+</body>
+</html>

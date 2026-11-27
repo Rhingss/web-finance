@@ -1,0 +1,4 @@
+node_modules/
+.env
+data/rapi-data.json
+data/rapi-data.json.tmp
